@@ -1,0 +1,5 @@
+# Skrid: no folder listings, settings file never served.
+Options -Indexes
+<Files "config.php">
+  Require all denied
+</Files>
