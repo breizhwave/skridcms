@@ -1,0 +1,47 @@
+/* Skrid: marks on the page itself while editing (loaded only by /skrid/view.php). Outlines never move the layout. */
+
+html.skrid-editing [data-skrid] {
+  cursor: text;
+  outline: 1px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color 0.15s ease, background-color 0.15s ease;
+}
+html.skrid-editing [data-skrid]:hover { outline-color: rgb(37 99 235 / 0.6); }
+html.skrid-editing [data-skrid].skrid-changed { outline-color: rgb(217 119 6 / 0.85); }
+html.skrid-editing [data-skrid][contenteditable="true"] {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+  background-color: rgb(37 99 235 / 0.06);
+  caret-color: #2563eb;
+}
+html.skrid-editing a[data-skrid],
+html.skrid-editing [data-skrid] a { cursor: text; }
+html.skrid-editing.skrid-flash [data-skrid] { outline-color: rgb(37 99 235 / 0.45); }
+
+/* Parts printed by a PHP page's code (lists from a data file): green outline, a click opens the data editor. */
+html.skrid-editing .skrid-dyn {
+  cursor: pointer;
+  outline: 1px dashed transparent;
+  outline-offset: 6px;
+  transition: outline-color 0.15s ease;
+}
+html.skrid-editing .skrid-dyn:hover { outline-color: rgb(13 148 136 / 0.75); }
+html.skrid-editing.skrid-flash .skrid-dyn { outline-color: rgb(13 148 136 / 0.5); }
+html.skrid-editing .skrid-dyn a { cursor: pointer; }
+
+/* Room under the content for the bar. */
+html.skrid-on body::after { content: ""; display: block; height: 88px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.skrid-editing [data-skrid] { transition: none; }
+}
+
+/* Skrid's own text styles, for the preview (pages get the same rules in <style id="skrid-styles"> when they use them). */
+.sk-larger { font-size: 1.25em; }
+.sk-smaller { font-size: .82em; }
+.sk-light { font-weight: 300; }
+.sk-heavy { font-weight: 900; }
+.sk-caps { text-transform: uppercase; letter-spacing: .08em; font-size: .86em; }
+.sk-lead { font-size: 1.2em; line-height: 1.5; }
+.sk-note { font-size: .875em; opacity: .78; }
+.sk-center { text-align: center; }
