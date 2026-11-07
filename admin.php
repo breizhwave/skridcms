@@ -294,6 +294,7 @@ function tree_node(array $node, callable $viewUrl, string $path): string
               'restore' => t('activity.restore'),
               'data' => t('activity.data'),
               'data-restore' => t('activity.dataRestore'),
+              'block' => t('activity.block.' . (string) ($e['op'] ?? 'duplicate'), (string) ($e['tag'] ?? '')),
               'password' => t('settings.changed'),
               default => (string) ($e['a'] ?? ''),
           }; ?>

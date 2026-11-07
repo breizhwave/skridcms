@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Show a page of the site exactly as it is, plus the Skrid bar.
  * ?p=/fr/musique/  [&mode=edit]  [&backup=20261102-153000-abcdef.html (read-only copy)]
  *
- * Editable elements get data-skrid="N" (attributes only, nothing else changes) and a <base> makes
+ * Editable elements get data-skrid="N", blocks data-skrid-block="K" (attributes only, nothing else changes) and a <base> makes
  * the page's relative links, images and styles work from /skrid/.
  *
  * A PHP page is run from its marked source (sk_render_php): its fixed texts carry data-skrid, and what
@@ -80,6 +80,8 @@ $config = [
     'site' => sk_site_url(),
     'skrid' => sk_skrid_url(),
     'count' => count($scan['editables']),
+    // Blocks: [enclosing block or -1, can move up, can move down], by data-skrid-block index.
+    'blocks' => $backup ? [] : array_map(static fn ($b) => [$b['parent'] ?? -1, $b['prev'] !== null ? 1 : 0, $b['next'] !== null ? 1 : 0], $scan['blocks']),
     'mode' => ($_GET['mode'] ?? '') === 'edit' ? 'edit' : '',
     'backup' => $backup,
     'lang' => skrid_lang(),

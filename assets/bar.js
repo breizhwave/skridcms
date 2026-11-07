@@ -19,6 +19,15 @@
   document.querySelectorAll('[data-skrid]').forEach((el) => { if (seen[el.dataset.skrid] > 1) el.removeAttribute('data-skrid'); });
   const els = new Map();                      // n → element
   document.querySelectorAll('[data-skrid]').forEach((el) => els.set(Number(el.dataset.skrid), el));
+  // Blocks (duplicate / move / delete), same rule for repeats.
+  const seenB = {};
+  document.querySelectorAll('[data-skrid-block]').forEach((el) => { seenB[el.dataset.skridBlock] = (seenB[el.dataset.skridBlock] || 0) + 1; });
+  const blockEls = new Map();                 // k → element
+  document.querySelectorAll('[data-skrid-block]').forEach((el) => {
+    if (seenB[el.dataset.skridBlock] > 1) el.removeAttribute('data-skrid-block');
+    else blockEls.set(Number(el.dataset.skridBlock), el);
+  });
+  const blockInfo = cfg.blocks || [];         // k → [enclosing block or -1, can move up, can move down]
   const baseline = new Map();                 // n → innerHTML before the first edit
   let hash = cfg.hash;
   let active = null;
@@ -49,6 +58,11 @@
     admin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 9h16M9 9v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    parent: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 6 6v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    up: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    down: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    duplicate: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 4H6a2 2 0 0 0-2 2v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     data: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   };
 
@@ -58,7 +72,7 @@
   * { box-sizing: border-box; }
   .wrap { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; padding: 0 10px; pointer-events: none; }
   .short, .ico { display: none; }
-  .bar, .tools, .toast {
+  .bar, .tools, .btools, .toast {
     font: 500 13px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #f8fafc;
     background: rgb(15 23 42 / 0.92); border: 1px solid rgb(255 255 255 / 0.12);
     box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.25);
@@ -115,6 +129,16 @@
   .toast .actions button:first-child { background: #0d9488; }
   .toast .actions button:first-child:hover { background: #0f766e; }
   .toast button { min-height: 30px; padding: 0 12px; background: rgb(255 255 255 / 0.12); }
+  .toast .actions button.danger { background: #dc2626; }
+  .toast .actions button.danger:hover { background: #b91c1c; }
+  .frame { position: fixed; border: 2px dashed #a78bfa; border-radius: 8px; pointer-events: none;
+    background: rgb(167 139 250 / 0.06); }
+  .btools { position: fixed; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 12px; }
+  .btools .tag { padding: 0 8px 0 6px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #c4b5fd; }
+  .btools button { min-height: 32px; width: 34px; padding: 0; border-radius: 8px; }
+  .btools button[disabled] { opacity: 0.35; cursor: default; background: none; }
+  .btools .danger:hover { background: rgb(239 68 68 / 0.35); }
   @media (max-width: 720px) {
     .label, .long, .brand, .status { display: none; }
     .short, .ico { display: inline; }
@@ -139,6 +163,16 @@
   <button type="button" data-cmd="revert" title="${T.revert}" aria-label="${T.revert}">${icon.revert}</button>
   <span class="linkrow" hidden><input type="text" inputmode="url" placeholder="${T.linkPlaceholder}" aria-label="${T.link}"><button type="button" data-cmd="link-ok">${T.linkOk}</button></span>
 </div>
+<div class="frame" hidden></div>
+<div class="btools" role="toolbar" aria-label="${T.block}" hidden>
+  <span class="tag"></span>
+  <button type="button" data-bop="parent" title="${T.blockParent}" aria-label="${T.blockParent}">${icon.parent}</button>
+  <span class="sep"></span>
+  <button type="button" data-bop="up" title="${T.blockUp}" aria-label="${T.blockUp}">${icon.up}</button>
+  <button type="button" data-bop="down" title="${T.blockDown}" aria-label="${T.blockDown}">${icon.down}</button>
+  <button type="button" data-bop="duplicate" title="${T.blockDuplicate}" aria-label="${T.blockDuplicate}">${icon.duplicate}</button>
+  <button type="button" data-bop="delete" class="danger" title="${T.blockDelete}" aria-label="${T.blockDelete}">${icon.trash}</button>
+</div>
 <div class="menu" role="menu" aria-label="${T.styles}" hidden></div>
 <div class="wrap"><div class="bar" role="region" aria-label="Skrid"></div></div>`;
 
@@ -149,6 +183,8 @@
   const toastEl = ui.querySelector('.toast');
   const menu = ui.querySelector('.menu');
   const blockSel = ui.querySelector('.blocksel');
+  const frame = ui.querySelector('.frame');
+  const btools = ui.querySelector('.btools');
   const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // Text styles (from Skrid and from the site's settings).
@@ -200,10 +236,11 @@
     toastEl.querySelector('.msg').textContent = msg;
     const box = toastEl.querySelector('.actions');
     box.innerHTML = '';
-    actions.forEach(([label, fn]) => {
+    actions.forEach(([label, fn, cls]) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = label;
+      if (cls) b.className = cls;
       b.addEventListener('click', () => { toastEl.hidden = true; fn(); });
       box.appendChild(b);
     });
@@ -281,6 +318,7 @@
     mode = m;
     store.set('skrid-mode', m);
     if (m !== 'edit' && active) deactivate();
+    if (m !== 'edit') selectBlock(null);
     html.classList.toggle('skrid-editing', m === 'edit');
     if (m === 'edit' && !quiet) {
       if (!cfg.count && !dyn.length) toast(T.none);
@@ -316,10 +354,17 @@
     hideLink();
     closeMenu();
     tools.hidden = true;
+    placeBlock();
     refresh();
   }
 
+  // The text toolbar first: the block toolbar keeps out of its way.
   function placeTools() {
+    placeTextTools();
+    placeBlock();
+  }
+
+  function placeTextTools() {
     if (!active) { tools.hidden = true; return; }
     tools.hidden = false;
     const r = active.getBoundingClientRect();
@@ -624,12 +669,12 @@
       }
       return;
     }
-    // While editing, a click in a text places the caret: never follow its links.
-    // While editing, a click in or on an editable text (or inside an editable card) places the caret: never follow links.
-if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skrid]') || a.querySelector('[data-skrid]'))) {
-  e.preventDefault();
-  return;
-}
+    // While editing, a click in or on an editable text, inside an editable card or in a block places the caret
+    // or selects the block: never follow those links (Browse mode follows them).
+    if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skrid], [data-skrid-block]') || a.querySelector('[data-skrid]'))) {
+      e.preventDefault();
+      return;
+    }
 
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (a.target && a.target !== '_self') return;
@@ -669,10 +714,12 @@ if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skr
     return { status: r.status, ok: r.ok && d.ok, data: d };
   }
 
-  async function save() {
-    if (busy || cfg.backup) return;
+  // Returns true when everything is saved. reload: false when the caller reloads the page itself.
+  async function save({ reload = true } = {}) {
+    if (busy || cfg.backup) return false;
     const list = changed();
-    if (!list.length) { toast(T.changes0); return; }
+    if (!list.length) { if (reload) toast(T.changes0); return true; }
+    let done = false;
     const edits = {};
     const blocks = {};
     innerChanged().forEach((n) => { edits[n] = els.get(n).innerHTML; });
@@ -695,8 +742,9 @@ if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skr
           if (baseline.has(n)) baseline.set(n, el.innerHTML);
           if (baseClass.has(n)) baseClass.set(n, styleClasses(el));
         });
-        toast(T.saved);
-        if (typeof data.count === 'number' && data.count !== cfg.count) {
+        done = true;
+        if (reload) toast(T.saved);
+        if (reload && typeof data.count === 'number' && data.count !== cfg.count) {
           baseline.clear();
           setTimeout(() => location.reload(), 600);           // the list of texts changed: renumber
         }
@@ -707,6 +755,149 @@ if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skr
       busy = false;
       refresh();
     }
+    return done;
+  }
+
+  // ------------------------------------------------------------------ blocks: duplicate, move, delete
+  // A click in Edit mode selects the nearest block around it (a dashed frame + a small toolbar);
+  // "↰" climbs to the block around it. Every change is written at once (texts being edited are saved
+  // first), then the page reloads, because the numbering of texts and blocks changes, and offers Undo.
+  let selBlock = null;                        // k of the selected block, or null
+
+  function blockLabel(el) {
+    const cls = [...el.classList].filter((c) => !c.startsWith('skrid-'))[0];
+    return el.tagName.toLowerCase() + (cls ? `.${cls}` : '');
+  }
+
+  function selectBlock(k) {
+    selBlock = k !== null && blockEls.has(k) ? k : null;
+    if (selBlock !== null) {
+      const [parent, up, down] = blockInfo[selBlock] || [-1, 0, 0];
+      const el = blockEls.get(selBlock);
+      btools.querySelector('.tag').textContent = blockLabel(el);
+      btools.querySelector('.tag').title = blockLabel(el);
+      btools.querySelector('[data-bop="parent"]').disabled = !blockEls.has(parent);
+      btools.querySelector('[data-bop="up"]').disabled = !up;
+      btools.querySelector('[data-bop="down"]').disabled = !down;
+    }
+    placeBlock();
+  }
+
+  function placeBlock() {
+    const el = selBlock !== null && blockEls.get(selBlock);
+    const r = el && el.getBoundingClientRect();
+    if (!r || (!r.width && !r.height)) { frame.hidden = true; btools.hidden = true; return; }
+    frame.hidden = false;
+    btools.hidden = false;
+    Object.assign(frame.style, { top: `${r.top - 5}px`, left: `${r.left - 5}px`, width: `${r.width + 10}px`, height: `${r.height + 10}px` });
+    const w = btools.offsetWidth;
+    const h = btools.offsetHeight;
+    const vh = window.innerHeight;
+    const left = Math.max(8, Math.min(r.right + 5 - w, window.innerWidth - w - 8));
+    let top = r.top - h - 10;                                   // above the block, on the right
+    const t = !tools.hidden && tools.getBoundingClientRect();
+    const hits = (y) => t && y < t.bottom + 4 && y + h > t.top - 4 && left < t.right + 4 && left + w > t.left - 4;
+    if (top < 8 || hits(top)) top = r.bottom + 10;              // under it
+    if (top + h > vh - 80 || hits(top)) top = Math.max(8, Math.min(r.top + 8, vh - h - 80));   // inside, top right
+    btools.style.top = `${Math.round(top)}px`;
+    btools.style.left = `${Math.round(left)}px`;
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    if (mode !== 'edit' || cfg.backup || inUi(e) || e.button !== 0) return;
+    const b = e.target.closest && e.target.closest('[data-skrid-block]');
+    selectBlock(b ? Number(b.dataset.skridBlock) : null);
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && selBlock !== null && !active && menu.hidden) selectBlock(null);
+  });
+  window.addEventListener('scroll', () => { if (selBlock !== null) placeBlock(); }, { passive: true });
+  window.addEventListener('resize', () => { if (selBlock !== null) placeBlock(); });
+
+  btools.addEventListener('mousedown', (e) => e.preventDefault());   // keep the caret where it is
+  btools.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b || b.disabled || selBlock === null) return;
+    const op = b.dataset.bop;
+    if (op === 'parent') { selectBlock((blockInfo[selBlock] || [-1])[0]); return; }
+    if (op === 'delete') {
+      const k = selBlock;
+      toast(fmt(T.blockDeleteAsk, blockLabel(blockEls.get(k))), {
+        sticky: true,
+        actions: [[T.blockDelete, () => blockOp(k, 'delete'), 'danger'], [T.cancel, () => {}]],
+      });
+      return;
+    }
+    blockOp(selBlock, op);
+  });
+
+  async function blockOp(k, op) {
+    if (busy) return;
+    if (active) { active.blur(); deactivate(); }
+    if (changed().length && !(await save({ reload: false }))) return;   // texts first, so nothing is lost
+    busy = true;
+    refresh();
+    try {
+      const { status, ok, data } = await post('block', { page: cfg.page, hash, block: k, op });
+      if (status === 409) {
+        toast(T.conflict, { error: true, sticky: true, actions: [[T.reload, () => location.reload()]] });
+      } else if (!ok) {
+        toast(fmt(T.failed, data.error || status), { error: true });
+      } else {
+        hash = data.hash;
+        baseline.clear();
+        store.set('skrid-after', JSON.stringify({ page: cfg.page, op, block: data.block, backup: data.backup, y: window.scrollY }));
+        location.reload();
+        return;
+      }
+    } catch (err) {
+      toast(fmt(T.failed, err.message), { error: true });
+    }
+    busy = false;
+    refresh();
+  }
+
+  // After the reload: back where we were, the block selected, and an Undo.
+  function afterBlockOp() {
+    let a = null;
+    try { a = JSON.parse(store.get('skrid-after') || 'null'); } catch (e) { /* ignore */ }
+    store.set('skrid-after', '');
+    if (!a || a.page !== cfg.page || cfg.backup) return;
+    if (typeof a.y === 'number') window.scrollTo(0, a.y);
+    if (a.undone) { toast(T.undone); return; }
+    if (mode !== 'edit') setMode('edit', true);
+    const el = a.block !== null && blockEls.get(a.block);
+    if (el) {
+      selectBlock(a.block);
+      const r = el.getBoundingClientRect();
+      if (r.top < 0 || r.top > window.innerHeight - 120) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (a.op === 'duplicate') {
+        // The copy is ready to be rewritten: its first text is active, all selected.
+        const txt = el.matches('[data-skrid]') ? el : el.querySelector('[data-skrid]');
+        if (txt) {
+          activate(txt);
+          txt.focus();
+          const range = document.createRange();
+          range.selectNodeContents(txt);
+          const s = document.getSelection();
+          s.removeAllRanges();
+          s.addRange(range);
+        }
+      }
+    }
+    const msg = { duplicate: T.blockDuplicated, delete: T.blockDeleted }[a.op] || T.blockMoved;
+    toast(msg, {
+      duration: 12000,
+      actions: a.backup ? [[T.undo, async () => {
+        if (changed().length && !(await save({ reload: false }))) return;
+        const { status, ok, data } = await post('restore', { page: cfg.page, backup: a.backup, hash });
+        if (ok) {
+          store.set('skrid-after', JSON.stringify({ page: cfg.page, undone: true, y: window.scrollY }));
+          location.reload();
+        } else if (status === 409) toast(T.conflict, { error: true, sticky: true, actions: [[T.reload, () => location.reload()]] });
+        else toast(fmt(T.failed, data.error || status), { error: true });
+      }]] : [],
+    });
   }
 
   function setStyleClasses(el, list) {
@@ -745,4 +936,5 @@ if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skr
   if (mode === 'edit' && !cfg.count && !dyn.length) toast(T.none);
   if (cfg.renderError) toast(fmt(T.renderError, cfg.renderError), { error: true, duration: 15000 });
   refresh();
+  afterBlockOp();
 })();
