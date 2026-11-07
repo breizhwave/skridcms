@@ -405,11 +405,11 @@ function sk_file(string $rel): string
     return sk_site_root() . '/' . $rel;
 }
 
-/** Write a page in place (same file, same permissions), after a backup copy. */
-function sk_write(string $rel, string $content, string $before): bool
+/** Write a page in place (same file, same permissions), after a backup copy. Returns the backup's name, false on failure. */
+function sk_write(string $rel, string $content, string $before): string|false
 {
-    sk_backup($rel, $before);
-    return file_put_contents(sk_file($rel), $content, LOCK_EX) !== false;
+    $backup = sk_backup($rel, $before);
+    return file_put_contents(sk_file($rel), $content, LOCK_EX) !== false ? $backup : false;
 }
 
 // ---------------------------------------------------------------- PHP pages
