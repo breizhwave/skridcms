@@ -58,6 +58,7 @@
     admin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 9h16M9 9v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></g></svg>',
     parent: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 6 6v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     up: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     down: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -72,7 +73,7 @@
   * { box-sizing: border-box; }
   .wrap { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; padding: 0 10px; pointer-events: none; }
   .short, .ico { display: none; }
-  .bar, .tools, .btools, .toast {
+  .bar, .tools, .btools, .cpanel, .toast {
     font: 500 13px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #f8fafc;
     background: rgb(15 23 42 / 0.92); border: 1px solid rgb(255 255 255 / 0.12);
     box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.25);
@@ -139,6 +140,31 @@
   .btools button { min-height: 32px; width: 34px; padding: 0; border-radius: 8px; }
   .btools button[disabled] { opacity: 0.35; cursor: default; background: none; }
   .btools .danger:hover { background: rgb(239 68 68 / 0.35); }
+  .btools .grip { cursor: grab; touch-action: none; }
+  .btools .tag { cursor: pointer; }
+  .btools .cls { width: auto; padding: 0 9px; font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .btools .cls[aria-expanded="true"], .btools .tag[aria-expanded="true"] { background: rgb(167 139 250 / 0.3); }
+  .ghost { position: fixed; pointer-events: none; padding: 5px 10px; border-radius: 8px; background: #7c3aed; color: #fff;
+    font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 8px 20px -6px rgb(0 0 0 / 0.5); }
+  .drop { position: fixed; pointer-events: none; border-radius: 3px; background: #8b5cf6; box-shadow: 0 0 0 2px rgb(255 255 255 / 0.8); }
+  .drop.box { background: rgb(139 92 246 / 0.1); border: 2px dashed #8b5cf6; box-shadow: none; border-radius: 8px; }
+  .drop.bad { background: #ef4444; }
+  .drop.box.bad { background: rgb(239 68 68 / 0.08); border-color: #ef4444; }
+  .droplabel { position: fixed; pointer-events: none; padding: 4px 8px; border-radius: 6px; white-space: nowrap;
+    font: 500 12px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; background: rgb(76 29 149 / 0.95); }
+  .droplabel.bad { background: rgb(185 28 28 / 0.95); }
+  .cpanel { position: fixed; width: min(380px, calc(100vw - 16px)); padding: 8px; border-radius: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .chips .none { color: rgb(248 250 252 / 0.55); padding: 2px 4px; }
+  button.chip { min-height: 26px; padding: 0 8px; border-radius: 6px; background: rgb(255 255 255 / 0.1);
+    font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  button.chip.off { text-decoration: line-through; opacity: 0.5; }
+  button.chip.new { background: rgb(16 185 129 / 0.3); }
+  .crow { display: flex; gap: 4px; }
+  .crow input { all: unset; box-sizing: border-box; flex: 1; min-width: 0; height: 32px; padding: 0 10px; border-radius: 8px;
+    background: rgb(255 255 255 / 0.1); color: #fff; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .crow button { min-height: 32px; padding: 0 12px; border-radius: 8px; }
+  .cpanel .hint { margin-top: 6px; color: rgb(248 250 252 / 0.55); font-size: 11.5px; line-height: 1.4; }
   @media (max-width: 720px) {
     .label, .long, .brand, .status { display: none; }
     .short, .ico { display: inline; }
@@ -165,7 +191,9 @@
 </div>
 <div class="frame" hidden></div>
 <div class="btools" role="toolbar" aria-label="${T.block}" hidden>
-  <span class="tag"></span>
+  <button type="button" data-bop="drag" class="grip" title="${T.blockDrag}" aria-label="${T.blockDrag}">${icon.grip}</button>
+  <span class="tag" data-bop="classes" title="${T.blockClasses}"></span>
+  <button type="button" data-bop="classes" class="cls" title="${T.blockClasses}" aria-label="${T.blockClasses}" aria-expanded="false">.class</button>
   <button type="button" data-bop="parent" title="${T.blockParent}" aria-label="${T.blockParent}">${icon.parent}</button>
   <span class="sep"></span>
   <button type="button" data-bop="up" title="${T.blockUp}" aria-label="${T.blockUp}">${icon.up}</button>
@@ -173,6 +201,14 @@
   <button type="button" data-bop="duplicate" title="${T.blockDuplicate}" aria-label="${T.blockDuplicate}">${icon.duplicate}</button>
   <button type="button" data-bop="delete" class="danger" title="${T.blockDelete}" aria-label="${T.blockDelete}">${icon.trash}</button>
 </div>
+<div class="cpanel" role="dialog" aria-label="${T.blockClasses}" hidden>
+  <div class="chips"></div>
+  <div class="crow"><input type="text" spellcheck="false" autocomplete="off" placeholder="${T.classAdd}" aria-label="${T.classAdd}"><button type="button" class="primary" data-cp="apply">${T.classApply}</button><button type="button" data-cp="cancel">${T.cancel}</button></div>
+  <div class="hint">${T.classHint}</div>
+</div>
+<div class="drop" hidden></div>
+<div class="droplabel" hidden></div>
+<div class="ghost" hidden></div>
 <div class="menu" role="menu" aria-label="${T.styles}" hidden></div>
 <div class="wrap"><div class="bar" role="region" aria-label="Skrid"></div></div>`;
 
@@ -185,6 +221,11 @@
   const blockSel = ui.querySelector('.blocksel');
   const frame = ui.querySelector('.frame');
   const btools = ui.querySelector('.btools');
+  const cpanel = ui.querySelector('.cpanel');
+  const cinput = cpanel.querySelector('input');
+  const dropEl = ui.querySelector('.drop');
+  const dropLabel = ui.querySelector('.droplabel');
+  const ghost = ui.querySelector('.ghost');
   const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // Text styles (from Skrid and from the site's settings).
@@ -758,24 +799,28 @@
     return done;
   }
 
-  // ------------------------------------------------------------------ blocks: duplicate, move, delete
+  // ------------------------------------------------------------------ blocks: select, drag, duplicate, move, classes, delete
   // A click in Edit mode selects the nearest block around it (a dashed frame + a small toolbar);
   // "↰" climbs to the block around it. Every change is written at once (texts being edited are saved
   // first), then the page reloads, because the numbering of texts and blocks changes, and offers Undo.
   let selBlock = null;                        // k of the selected block, or null
+  const srcClasses = (k) => String((blockInfo[k] || [])[3] || '').split(/\s+/).filter(Boolean);   // as written in the file
 
-  function blockLabel(el) {
-    const cls = [...el.classList].filter((c) => !c.startsWith('skrid-'))[0];
+  function blockLabel(k) {
+    const el = blockEls.get(k);
+    if (!el) return '';
+    const cls = srcClasses(k)[0];
     return el.tagName.toLowerCase() + (cls ? `.${cls}` : '');
   }
 
   function selectBlock(k) {
+    if (cp && cp.k !== k) closeClasses(false);
     selBlock = k !== null && blockEls.has(k) ? k : null;
     if (selBlock !== null) {
       const [parent, up, down] = blockInfo[selBlock] || [-1, 0, 0];
-      const el = blockEls.get(selBlock);
-      btools.querySelector('.tag').textContent = blockLabel(el);
-      btools.querySelector('.tag').title = blockLabel(el);
+      const tag = btools.querySelector('.tag');
+      tag.textContent = blockLabel(selBlock);
+      tag.title = `${srcClasses(selBlock).join(' ') || blockLabel(selBlock)}\n${T.blockClasses}`;
       btools.querySelector('[data-bop="parent"]').disabled = !blockEls.has(parent);
       btools.querySelector('[data-bop="up"]').disabled = !up;
       btools.querySelector('[data-bop="down"]').disabled = !down;
@@ -784,9 +829,9 @@
   }
 
   function placeBlock() {
-    const el = selBlock !== null && blockEls.get(selBlock);
+    const el = selBlock !== null && !drag && blockEls.get(selBlock);
     const r = el && el.getBoundingClientRect();
-    if (!r || (!r.width && !r.height)) { frame.hidden = true; btools.hidden = true; return; }
+    if (!r || (!r.width && !r.height)) { frame.hidden = true; btools.hidden = true; cpanel.hidden = true; return; }
     frame.hidden = false;
     btools.hidden = false;
     Object.assign(frame.style, { top: `${r.top - 5}px`, left: `${r.left - 5}px`, width: `${r.width + 10}px`, height: `${r.height + 10}px` });
@@ -801,6 +846,15 @@
     if (top + h > vh - 80 || hits(top)) top = Math.max(8, Math.min(r.top + 8, vh - h - 80));   // inside, top right
     btools.style.top = `${Math.round(top)}px`;
     btools.style.left = `${Math.round(left)}px`;
+    if (cp) {                                                    // the classes panel hangs under the toolbar
+      cpanel.hidden = false;
+      const pw = cpanel.offsetWidth;
+      const ph = cpanel.offsetHeight;
+      let pt = top + h + 6;
+      if (pt + ph > vh - 80) pt = Math.max(8, top - ph - 6);
+      cpanel.style.top = `${Math.round(pt)}px`;
+      cpanel.style.left = `${Math.round(Math.max(8, Math.min(left + w - pw, window.innerWidth - pw - 8)))}px`;
+    }
   }
 
   document.addEventListener('mousedown', (e) => {
@@ -809,20 +863,22 @@
     selectBlock(b ? Number(b.dataset.skridBlock) : null);
   }, true);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && selBlock !== null && !active && menu.hidden) selectBlock(null);
+    if (e.key === 'Escape' && selBlock !== null && !active && menu.hidden && !cp) selectBlock(null);
   });
   window.addEventListener('scroll', () => { if (selBlock !== null) placeBlock(); }, { passive: true });
   window.addEventListener('resize', () => { if (selBlock !== null) placeBlock(); });
 
   btools.addEventListener('mousedown', (e) => e.preventDefault());   // keep the caret where it is
   btools.addEventListener('click', (e) => {
-    const b = e.target.closest('button');
+    const b = e.target.closest('button, .tag');
     if (!b || b.disabled || selBlock === null) return;
     const op = b.dataset.bop;
+    if (op === 'drag') return;                                  // pointer events, below
+    if (op === 'classes') { openClasses(); return; }
     if (op === 'parent') { selectBlock((blockInfo[selBlock] || [-1])[0]); return; }
     if (op === 'delete') {
       const k = selBlock;
-      toast(fmt(T.blockDeleteAsk, blockLabel(blockEls.get(k))), {
+      toast(fmt(T.blockDeleteAsk, blockLabel(k)), {
         sticky: true,
         actions: [[T.blockDelete, () => blockOp(k, 'delete'), 'danger'], [T.cancel, () => {}]],
       });
@@ -831,31 +887,322 @@
     blockOp(selBlock, op);
   });
 
-  async function blockOp(k, op) {
-    if (busy) return;
+  // Write a block change, then reload. Returns false when it did not happen.
+  async function blockOp(k, op, extra = {}) {
+    if (busy) return false;
     if (active) { active.blur(); deactivate(); }
-    if (changed().length && !(await save({ reload: false }))) return;   // texts first, so nothing is lost
+    if (changed().length && !(await save({ reload: false }))) return false;   // texts first, so nothing is lost
     busy = true;
     refresh();
     try {
-      const { status, ok, data } = await post('block', { page: cfg.page, hash, block: k, op });
+      const { status, ok, data } = await post('block', { page: cfg.page, hash, block: k, op, ...extra });
       if (status === 409) {
         toast(T.conflict, { error: true, sticky: true, actions: [[T.reload, () => location.reload()]] });
       } else if (!ok) {
-        toast(fmt(T.failed, data.error || status), { error: true });
+        toast(T[`drop.${data.error}`] || fmt(T.failed, data.error || status), { error: true });
+      } else if (data.same) {
+        busy = false;
+        refresh();
+        return true;                                            // dropped where it already was
       } else {
         hash = data.hash;
         baseline.clear();
-        store.set('skrid-after', JSON.stringify({ page: cfg.page, op, block: data.block, backup: data.backup, y: window.scrollY }));
+        store.set('skrid-after', JSON.stringify({ page: cfg.page, op, block: data.block, backup: data.backup, became: data.became || '', y: window.scrollY }));
         location.reload();
-        return;
+        return true;
       }
     } catch (err) {
       toast(fmt(T.failed, err.message), { error: true });
     }
     busy = false;
     refresh();
+    return false;
   }
+
+  // ------------------------------------------------------------------ drag and drop
+  // The ⠿ handle carries the block anywhere in the zone. A line (before / after a block) or a dashed box
+  // (inside it) shows where it goes, in red with the reason when HTML does not allow it there.
+  // Same rules as skrid_drop_fit() in lib/scan.php; the server checks again and has the last word.
+  const LISTS = ['UL', 'OL', 'MENU'];
+  const TABLE_PARTS = ['TABLE', 'THEAD', 'TBODY', 'TFOOT'];
+  const FLOW = new Set(['MAIN', 'BODY', 'DIV', 'SECTION', 'ARTICLE', 'ASIDE', 'HEADER', 'FOOTER', 'NAV', 'LI', 'DD', 'FIGURE',
+    'BLOCKQUOTE', 'DETAILS', 'FIELDSET', 'ADDRESS', 'TD', 'TH', 'A', 'DIALOG', 'SEARCH']);
+  const CONTAINERS = new Set([...FLOW, ...LISTS, ...TABLE_PARTS, 'DL', 'HGROUP']);
+  const SECTIONING = ['ARTICLE', 'SECTION', 'MAIN', 'ASIDE'];
+  const BLOCKY = 'address,article,aside,blockquote,dd,details,div,dl,dt,fieldset,figure,footer,h1,h2,h3,h4,h5,h6,header,hgroup,'
+    + 'li,menu,nav,ol,p,pre,section,table,tr,ul,form,hr,iframe,video,audio,canvas,svg';
+  const root = document.querySelector('[data-skrid-root]');
+  let drag = null;                            // {k, el, x, y, target, raf}
+
+  const parentBlock = (el) => el.parentElement && el.parentElement.closest('[data-skrid-block], [data-skrid-root]');
+
+  function fit(el, parent) {
+    const tag = el.tagName;
+    const anc = [];
+    for (let p = parent; p; p = p.parentElement) anc.push(p.tagName);
+    const ptag = anc[0] || 'BODY';
+    const gtag = anc[1] || '';
+    const has = (sel) => !!el.querySelector(sel);
+    if (anc.includes('A') && (tag === 'A' || has('a, button, input, select, textarea'))) return { code: 'link-in-link' };
+    if ((anc.includes('HEADER') || anc.includes('FOOTER')) && (tag === 'HEADER' || tag === 'FOOTER' || has('header, footer'))) return { code: 'header-in-header' };
+    if (anc.includes('ADDRESS') && (/^(H[1-6]|HEADER|FOOTER|SECTION|ARTICLE|ASIDE|NAV|ADDRESS)$/.test(tag)
+      || has('h1, h2, h3, h4, h5, h6, header, footer, section, article, aside, nav, address'))) return { code: 'in-address' };
+    if (TABLE_PARTS.includes(ptag)) return tag === 'TR' ? { became: '' } : { code: 'table-needs-row' };
+    if (tag === 'TR') return { code: 'row-needs-table' };
+    if (LISTS.includes(ptag)) return { became: tag === 'LI' ? '' : (tag === 'P' ? 'p>li' : 'li') };
+    const dtdd = tag === 'DIV' && has('dt, dd') && !has('dl');
+    if (ptag === 'DL' || (ptag === 'DIV' && gtag === 'DL')) {
+      return (tag === 'DT' || tag === 'DD' || (dtdd && ptag === 'DL')) ? { became: '' } : { code: 'dl-needs-dt-dd' };
+    }
+    if (dtdd) return { code: 'dl-group' };
+    if (ptag === 'HGROUP') return /^(H[1-6]|P)$/.test(tag) ? { became: '' } : { code: 'hgroup' };
+    if (!FLOW.has(ptag)) return { code: 'no-block-here' };
+    if (['LI', 'DT', 'DD'].includes(tag)) return { became: has(BLOCKY) ? 'unwrap' : `${tag.toLowerCase()}>p` };
+    if (root && root.tagName === 'BODY' && ['HEADER', 'FOOTER', 'NAV'].includes(tag) && !anc.some((x) => SECTIONING.includes(x))) {
+      return { code: 'becomes-chrome' };
+    }
+    return { became: '' };
+  }
+
+  function fitNote(became) {
+    if (!became) return '';
+    if (became === 'li' || became === 'unwrap') return T[`fit.${became}`];
+    const [a, b] = became.split('>');
+    return fmt(T['fit.to'], a, b);
+  }
+
+  function isRow(H) {
+    const p = H.parentElement;
+    if (!p) return false;
+    const cs = getComputedStyle(p);
+    if (cs.display.includes('flex')) return !cs.flexDirection.startsWith('column');
+    const sib = H.previousElementSibling || H.nextElementSibling;
+    if (!sib) return false;
+    const a = H.getBoundingClientRect();
+    const b = sib.getBoundingClientRect();
+    return Math.abs(a.top - b.top) < Math.min(a.height, b.height) / 2 && Math.abs(a.left - b.left) > 1;
+  }
+
+  function evaluate(H, where, row = false) {
+    const t = H === root ? -1 : Number(H.dataset.skridBlock);
+    let parent;
+    if (where === 'inside') {
+      if (H !== root && H.hasAttribute('data-skrid')) return { H, t, where, code: 'not-container' };
+      const kids = [...H.querySelectorAll('[data-skrid-block]')].filter((c) => c !== drag.el && !drag.el.contains(c) && parentBlock(c) === H);
+      parent = kids.length ? kids[kids.length - 1].parentElement : H;
+    } else {
+      parent = H.parentElement;
+    }
+    if (drag.el === H || drag.el.contains(parent)) return { H, t, where, row, code: 'into-itself' };
+    return { H, t, where, row, ...fit(drag.el, parent) };
+  }
+
+  // The block under the pointer decides: its top / bottom edge (left / right in a row) = before / after it,
+  // its middle = inside it. When the dragged block is not allowed there (a stat row over the <dd> of
+  // another row), the blocks around it are tried, before or after them, and the first that fits wins.
+  function findTarget(x, y) {
+    const hit = document.elementFromPoint(x, y);
+    if (!hit || drag.el.contains(hit)) return null;
+    let H = hit.closest('[data-skrid-block]');
+    if (!H) return root && root.contains(hit) ? evaluate(root, 'inside') : null;
+    let first = null;
+    for (let depth = 0; H; depth++) {
+      const r = H.getBoundingClientRect();
+      const row = isRow(H);
+      const rel = row ? (x - r.left) / Math.max(1, r.width) : (y - r.top) / Math.max(1, r.height);
+      const canIn = depth === 0 && CONTAINERS.has(H.tagName) && !H.hasAttribute('data-skrid');
+      const where = rel < (canIn ? 0.28 : 0.5) ? 'before' : (rel >= (canIn ? 0.72 : 0.5) ? 'after' : 'inside');
+      const tg = evaluate(H, where, row);
+      if (!tg.code) return tg;
+      first = first || tg;
+      const up = parentBlock(H);
+      H = up && up !== root ? up : null;
+    }
+    return first;
+  }
+
+  function showDrop(tg) {
+    if (!tg) { dropEl.hidden = true; dropLabel.hidden = true; return; }
+    const bad = !!tg.code;
+    const r = tg.H.getBoundingClientRect();
+    dropEl.className = `drop${tg.where === 'inside' ? ' box' : ''}${bad ? ' bad' : ''}`;
+    let s;
+    if (tg.where === 'inside') s = { top: r.top + 2, left: r.left + 2, width: r.width - 4, height: Math.max(8, r.height - 4) };
+    else if (tg.row) s = { top: r.top, left: tg.where === 'before' ? r.left - 5 : r.right + 2, width: 3, height: r.height };
+    else s = { top: tg.where === 'before' ? r.top - 5 : r.bottom + 2, left: r.left, width: r.width, height: 3 };
+    Object.assign(dropEl.style, { top: `${s.top}px`, left: `${s.left}px`, width: `${s.width}px`, height: `${s.height}px` });
+    dropEl.hidden = false;
+    const place = tg.H === root ? T['where.root'] : `${T[`where.${tg.where}`]} ${blockLabel(tg.t)}`;
+    dropLabel.textContent = [place, bad ? (T[`drop.${tg.code}`] || tg.code) : fitNote(tg.became)].filter(Boolean).join(' · ');
+    dropLabel.className = `droplabel${bad ? ' bad' : ''}`;
+    dropLabel.hidden = false;
+    Object.assign(dropLabel.style, { left: `${Math.min(drag.x + 14, window.innerWidth - dropLabel.offsetWidth - 8)}px`, top: `${drag.y + 44}px` });
+  }
+
+  function updateDrag() {
+    Object.assign(ghost.style, { left: `${drag.x + 14}px`, top: `${drag.y + 14}px` });
+    drag.target = findTarget(drag.x, drag.y);
+    showDrop(drag.target);
+  }
+
+  function autoScroll() {                     // near the top or bottom edge, the page scrolls
+    if (!drag) return;
+    const vh = window.innerHeight;
+    const dy = drag.y < 70 ? -(70 - drag.y) / 3 : (drag.y > vh - 130 ? (drag.y - (vh - 130)) / 3 : 0);
+    if (dy) { window.scrollBy(0, dy); updateDrag(); }
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+
+  function startDrag(e) {
+    if (selBlock === null || busy) return;
+    e.preventDefault();
+    closeClasses(false);
+    if (active) { active.blur(); deactivate(); }
+    const el = blockEls.get(selBlock);
+    drag = { k: selBlock, el, x: e.clientX, y: e.clientY, target: null, raf: 0 };
+    el.classList.add('skrid-dragging');
+    html.classList.add('skrid-dragmode');
+    ghost.textContent = blockLabel(selBlock);
+    ghost.hidden = false;
+    placeBlock();                             // hides the frame and the toolbar while dragging
+    window.addEventListener('pointermove', onDragMove, true);
+    window.addEventListener('pointerup', onDragEnd, true);
+    window.addEventListener('pointercancel', stopDrag, true);
+    updateDrag();
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+
+  function onDragMove(e) {
+    if (!drag) return;
+    e.preventDefault();
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    updateDrag();
+  }
+
+  function stopDrag() {
+    if (!drag) return null;
+    const d = drag;
+    drag = null;
+    cancelAnimationFrame(d.raf);
+    window.removeEventListener('pointermove', onDragMove, true);
+    window.removeEventListener('pointerup', onDragEnd, true);
+    window.removeEventListener('pointercancel', stopDrag, true);
+    d.el.classList.remove('skrid-dragging');
+    html.classList.remove('skrid-dragmode');
+    ghost.hidden = true;
+    dropEl.hidden = true;
+    dropLabel.hidden = true;
+    placeBlock();
+    return d;
+  }
+
+  function onDragEnd(e) {
+    e.preventDefault();
+    const d = stopDrag();
+    const tg = d && d.target;
+    if (!tg) return;
+    if (tg.code) { toast(T[`drop.${tg.code}`] || tg.code, { error: true }); return; }
+    blockOp(d.k, 'drop', { target: tg.t, where: tg.where });
+  }
+
+  btools.addEventListener('pointerdown', (e) => { if (e.button === 0 && e.target.closest('[data-bop="drag"]')) startDrag(e); });
+  document.addEventListener('keydown', (e) => {
+    if (drag && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); stopDrag(); }
+  }, true);
+
+  // ------------------------------------------------------------------ classes of a block
+  // The classes as written in the file, as chips: a click removes one (or brings it back), the field adds
+  // some. The page shows the result at once; "Apply" writes the class attribute, and only that.
+  let cp = null;                              // {k, el, orig, cur}
+
+  function setExpanded(v) { btools.querySelectorAll('[data-bop="classes"]').forEach((b) => b.setAttribute('aria-expanded', String(v))); }
+
+  function openClasses() {
+    if (selBlock === null) return;
+    if (cp) { closeClasses(false); return; }
+    cp = { k: selBlock, el: blockEls.get(selBlock), orig: srcClasses(selBlock), cur: srcClasses(selBlock) };
+    renderClasses();
+    setExpanded(true);
+    placeBlock();
+    cinput.value = '';
+    cinput.focus();
+  }
+
+  function preview(next) {                    // only the classes that change: what the site's scripts added stays
+    cp.cur.filter((c) => !next.includes(c)).forEach((c) => cp.el.classList.remove(c));
+    next.filter((c) => !cp.cur.includes(c)).forEach((c) => cp.el.classList.add(c));
+    cp.cur = next;
+    renderClasses();
+    placeBlock();
+  }
+
+  function renderClasses() {
+    const all = [...cp.orig, ...cp.cur.filter((c) => !cp.orig.includes(c))];
+    const box = cpanel.querySelector('.chips');
+    box.innerHTML = '';
+    if (!all.length) {
+      const s = document.createElement('span');
+      s.className = 'none';
+      s.textContent = T.classNone;
+      box.appendChild(s);
+    }
+    all.forEach((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `chip${cp.cur.includes(c) ? (cp.orig.includes(c) ? '' : ' new') : ' off'}`;
+      b.textContent = c;
+      b.title = c;
+      b.dataset.c = c;
+      box.appendChild(b);
+    });
+  }
+
+  function addTyped() {
+    const toks = cinput.value.trim().split(/\s+/).filter(Boolean);
+    if (!toks.length) return true;
+    if (toks.some((c) => /["'<>`]/.test(c) || c.length > 120)) { toast(T.classBad, { error: true }); return false; }
+    preview([...cp.cur, ...toks.filter((c) => !cp.cur.includes(c))]);
+    cinput.value = '';
+    return true;
+  }
+
+  function closeClasses(keep) {
+    if (!cp) return;
+    if (!keep) preview(cp.orig);
+    cp = null;
+    cpanel.hidden = true;
+    setExpanded(false);
+    placeBlock();
+  }
+
+  async function applyClasses() {
+    if (!cp || !addTyped()) return;
+    const { k, el, orig, cur } = cp;
+    closeClasses(true);                       // the preview stays while it is written
+    if (cur.join(' ') === orig.join(' ')) return;
+    if (!(await blockOp(k, 'classes', { classes: cur.join(' ') }))) {
+      cur.filter((c) => !orig.includes(c)).forEach((c) => el.classList.remove(c));
+      orig.filter((c) => !cur.includes(c)).forEach((c) => el.classList.add(c));
+    }
+  }
+
+  cpanel.addEventListener('mousedown', (e) => { if (!e.target.closest('input')) e.preventDefault(); });
+  cpanel.addEventListener('click', (e) => {
+    if (!cp) return;
+    const chip = e.target.closest('.chip');
+    if (chip) {
+      const c = chip.dataset.c;
+      preview(cp.cur.includes(c) ? cp.cur.filter((x) => x !== c) : [...cp.cur, c]);
+      return;
+    }
+    const b = e.target.closest('[data-cp]');
+    if (b) { if (b.dataset.cp === 'cancel') closeClasses(false); else applyClasses(); }
+  });
+  cinput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); if (cinput.value.trim()) addTyped(); else applyClasses(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeClasses(false); }
+  });
 
   // After the reload: back where we were, the block selected, and an Undo.
   function afterBlockOp() {
@@ -866,7 +1213,7 @@
     if (typeof a.y === 'number') window.scrollTo(0, a.y);
     if (a.undone) { toast(T.undone); return; }
     if (mode !== 'edit') setMode('edit', true);
-    const el = a.block !== null && blockEls.get(a.block);
+    const el = a.block !== null && a.block !== undefined && blockEls.get(a.block);
     if (el) {
       selectBlock(a.block);
       const r = el.getBoundingClientRect();
@@ -885,7 +1232,8 @@
         }
       }
     }
-    const msg = { duplicate: T.blockDuplicated, delete: T.blockDeleted }[a.op] || T.blockMoved;
+    const msg = { duplicate: T.blockDuplicated, delete: T.blockDeleted, classes: T.classesSaved }[a.op]
+      || [T.blockMoved, fitNote(a.became)].filter(Boolean).join(' ');
     toast(msg, {
       duration: 12000,
       actions: a.backup ? [[T.undo, async () => {

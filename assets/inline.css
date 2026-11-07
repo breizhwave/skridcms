@@ -45,3 +45,7 @@ html.skrid-on body::after { content: ""; display: block; height: 88px; }
 .sk-lead { font-size: 1.2em; line-height: 1.5; }
 .sk-note { font-size: .875em; opacity: .78; }
 .sk-center { text-align: center; }
+
+/* Dragging a block: it fades where it was, the page does not select text meanwhile. */
+html.skrid-editing .skrid-dragging { opacity: 0.35; transition: opacity 0.15s ease; }
+html.skrid-dragmode, html.skrid-dragmode * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }

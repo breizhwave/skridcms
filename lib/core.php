@@ -7,7 +7,7 @@ declare(strict_types=1);
  * its .json data files, plus skrid/data/ (settings, backups, log).
  */
 
-const SKRID_VERSION = '0.5.0';
+const SKRID_VERSION = '0.6.0';
 
 /** JSON files that belong to tools, not to the site's content. */
 const SK_DATA_SKIP = ['package.json', 'package-lock.json', 'composer.json', 'composer.lock', 'tsconfig.json', 'jsconfig.json'];

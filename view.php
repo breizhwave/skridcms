@@ -80,8 +80,11 @@ $config = [
     'site' => sk_site_url(),
     'skrid' => sk_skrid_url(),
     'count' => count($scan['editables']),
-    // Blocks: [enclosing block or -1, can move up, can move down], by data-skrid-block index.
-    'blocks' => $backup ? [] : array_map(static fn ($b) => [$b['parent'] ?? -1, $b['prev'] !== null ? 1 : 0, $b['next'] !== null ? 1 : 0], $scan['blocks']),
+    // Blocks: [enclosing block or -1, can move up, can move down, classes as written in the file], by data-skrid-block index.
+    'blocks' => $backup ? [] : array_map(static fn ($b) => [
+        $b['parent'] ?? -1, $b['prev'] !== null ? 1 : 0, $b['next'] !== null ? 1 : 0,
+        $b['class'] ? trim(html_entity_decode(substr($html, $b['class'][0], $b['class'][1] - $b['class'][0]), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '',
+    ], $scan['blocks']),
     'mode' => ($_GET['mode'] ?? '') === 'edit' ? 'edit' : '',
     'backup' => $backup,
     'lang' => skrid_lang(),
