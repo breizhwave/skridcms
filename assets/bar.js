@@ -625,7 +625,12 @@
       return;
     }
     // While editing, a click in a text places the caret: never follow its links.
-    if (mode === 'edit' && a.closest('[data-skrid]')) { e.preventDefault(); return; }
+    // While editing, a click in or on an editable text (or inside an editable card) places the caret: never follow links.
+if (mode === 'edit' && (e.target.closest('[data-skrid]') || a.closest('[data-skrid]') || a.querySelector('[data-skrid]'))) {
+  e.preventDefault();
+  return;
+}
+
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (a.target && a.target !== '_self') return;
     const raw = a.getAttribute('href');
