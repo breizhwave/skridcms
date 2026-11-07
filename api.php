@@ -140,7 +140,8 @@ switch ($action) {
         sk_json(['ok' => true, 'hash' => sha1($new)]);
 
     case 'block':
-        // Duplicate, move or delete block K. The page must be the one the bar was served (hash required).
+        // Duplicate, move (up / down / drop), delete block K or set its classes.
+        // The page must be the one the bar was served (hash required).
         if ((string) ($in['hash'] ?? '') === '') {
             sk_json(['error' => 'conflict'], 409);
         }
@@ -148,10 +149,21 @@ switch ($action) {
         $scan = skrid_scan($s);
         $k = (int) ($in['block'] ?? -1);
         $op = (string) ($in['op'] ?? '');
+        $became = '';
         try {
-            [$new, $at] = skrid_block_op($s, $scan, $k, $op);
+            if ($op === 'drop') {                    // drag and drop: {target: block or -1 (the zone), where: before|after|inside}
+                [$new, $at, $became] = skrid_block_drop($s, $scan, $k, (int) ($in['target'] ?? -2), (string) ($in['where'] ?? ''));
+            } elseif ($op === 'classes') {           // {classes: "a b c"}
+                $new = skrid_block_classes($s, $scan, $k, (string) ($in['classes'] ?? ''));
+                $at = $scan['blocks'][$k]['start'];
+            } else {
+                [$new, $at] = skrid_block_op($s, $scan, $k, $op);
+            }
         } catch (InvalidArgumentException $e) {
             sk_json(['error' => $e->getMessage()], 400);
+        }
+        if ($new === $s) {
+            sk_json(['ok' => true, 'hash' => sha1($s), 'block' => $k, 'backup' => null, 'count' => count($scan['editables']), 'same' => true]);
         }
         if (skrid_php_code($new) !== skrid_php_code($s)) {
             sk_json(['error' => 'php'], 400);           // never change a PHP page's code
@@ -163,7 +175,7 @@ switch ($action) {
         sk_log('block', $rel, ['op' => $op, 'tag' => $scan['blocks'][$k]['tag']]);
         $after = skrid_scan($new);
         sk_json(['ok' => true, 'hash' => sha1($new), 'block' => skrid_block_at($after, $at), 'backup' => $backup,
-                 'count' => count($after['editables'])]);
+                 'count' => count($after['editables']), 'became' => $became]);
 
     case 'restore':
         // Admin › History sends no hash; the bar's "Undo" sends one, so it never undoes someone else's change.
