@@ -17,6 +17,9 @@ declare(strict_types=1);
  * The site header and footer are recorded (ranges + hash) so they can be grouped per language
  * and, later, edited once for every page that shares them.
  *
+ * Blocks (sections, cards, list items, paragraphs…) are recorded with their full byte range, so they
+ * can be duplicated, moved among their siblings or deleted by moving bytes only (skrid_block_op).
+ *
  * PHP pages: the PHP blocks (<?php … ?>, <?= … ?>) are blanked out before reading, so the scanner only
  * sees the page's fixed HTML. An element that contains or touches PHP code is never editable, and
  * saving only rewrites bytes outside the PHP blocks (api.php checks the code is unchanged).
@@ -46,6 +49,19 @@ const SK_FORBIDDEN = [
     'object', 'canvas', 'video', 'audio', 'form',
 ];
 
+/**
+ * Elements that can be duplicated, moved among their siblings or deleted as a whole ("blocks").
+ * An <a> counts too when it wraps block content (a card link).
+ */
+const SK_BLOCK = [
+    'address', 'article', 'aside', 'blockquote', 'dd', 'details', 'div', 'dl', 'dt', 'fieldset', 'figure',
+    'footer', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'li', 'menu', 'nav', 'ol', 'p', 'pre',
+    'section', 'table', 'tr', 'ul',
+];
+
+/** Attributes that point to an id: renamed with it in a duplicated block. */
+const SK_ID_REFS = ['for', 'headers', 'list', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-owns'];
+
 /** Site chrome: excluded from editing when the page has no <main>, recorded for later. */
 const SK_CHROME = ['header', 'footer', 'nav'];
 const SK_SECTIONING = ['article', 'section', 'main', 'aside'];
@@ -62,6 +78,7 @@ const SK_CLOSES_P = [
  *
  * @return array{
  *   editables: list<array{tag:string,start:int,open_end:int,inner_start:int,inner_end:int}>,
+ *   blocks: list<array{tag:string,start:int,open_end:int,end:int,parent:?int,prev:?int,next:?int}>,
  *   title: ?array{0:int,1:int},
  *   meta: array<string,array{0:int,1:int}>,
  *   lang: string,
@@ -105,6 +122,7 @@ function skrid_scan(string $s): array
         $n['clean'] = $clean;
         if ($clean) {
             $n['inner_end'] = $endStart;
+            $n['end'] = $endEnd;
         }
 
         // Editable?
@@ -355,6 +373,7 @@ function skrid_scan(string $s): array
             && !($parent['chrome'] ?? false) && !($parent['sectioned'] ?? false);
         $nodes[] = [
             'name' => $name,
+            'parent' => $stack ? $top() : null,
             'start' => $lt,
             'open_end' => $openEnd,
             'inner_end' => null,
@@ -402,6 +421,7 @@ function skrid_scan(string $s): array
     }
     usort($list, static fn ($a, $b) => $a['start'] <=> $b['start']);
     $out['editables'] = $list;
+    $out['blocks'] = skrid_blocks($nodes, $hasMain, $php);
 
     // PHP blocks: [start, end, printed among the page's text (not inside a tag, script or style)].
     foreach ($php as [$a, $b]) {
@@ -442,6 +462,13 @@ function skrid_mark(string $s, array $scan, bool $dynamic = false): string
             $at--;                                   // "<p/>" never happens for editables, but be safe
         }
         $ins[] = [$at, ' data-skrid="' . $n . '"'];
+    }
+    foreach ($scan['blocks'] ?? [] as $k => $b) {
+        $at = $b['open_end'] - 1;
+        if (($s[$at - 1] ?? '') === '/') {
+            $at--;
+        }
+        $ins[] = [$at, ' data-skrid-block="' . $k . '"'];
     }
     if ($dynamic && $scan['body_open_end'] !== null) {
         foreach ($scan['php'] ?? [] as [$a, $b, $inText]) {
@@ -576,4 +603,163 @@ function skrid_inner(string $s, array $scan, int $n): string
 {
     $e = $scan['editables'][$n];
     return substr($s, $e['inner_start'], $e['inner_end'] - $e['inner_start']);
+}
+
+// ---------------------------------------------------------------- blocks
+
+/**
+ * Blocks of the page, in document order (an outer block comes before the blocks inside it).
+ * A block is a clean element (explicit end tag) of SK_BLOCK in the editing zone, outside forbidden
+ * ancestors, that neither contains nor touches PHP code.
+ *
+ * parent: index of the nearest enclosing block (null at the top).
+ * prev / next: the neighbouring block with the same parent element, where a move can go. A move never
+ * crosses PHP code (it could carry a block in or out of an "if" or a loop), so a gap with PHP gives null.
+ *
+ * @return list<array{tag:string,start:int,open_end:int,end:int,parent:?int,prev:?int,next:?int}>
+ */
+function skrid_blocks(array $nodes, bool $hasMain, array $php): array
+{
+    $byNode = [];                                    // node index => block index
+    $list = [];
+    foreach ($nodes as $i => $n) {
+        if (!$n['clean'] || $n['forbidden'] || $n['in_head']) {
+            continue;
+        }
+        $zoneOk = $hasMain ? ($n['in_main'] && $n['name'] !== 'main') : !$n['chrome'];
+        $isBlock = in_array($n['name'], SK_BLOCK, true) || ($n['name'] === 'a' && !$n['phrasing']);
+        if (!$zoneOk || !$isBlock || ($php && skrid_touches_php($php, $n['start'], $n['end']))) {
+            continue;
+        }
+        $byNode[$i] = count($list);
+        $list[] = ['tag' => $n['name'], 'start' => $n['start'], 'open_end' => $n['open_end'], 'end' => $n['end'],
+                   'parent' => null, 'prev' => null, 'next' => null, '_node' => $n['parent']];
+    }
+    $last = [];                                      // parent element => last block seen in it
+    foreach ($list as $k => &$b) {
+        for ($p = $b['_node']; $p !== null; $p = $nodes[$p]['parent']) {
+            if (isset($byNode[$p])) {
+                $b['parent'] = $byNode[$p];
+                break;
+            }
+        }
+        $key = $b['_node'] ?? -1;
+        if (isset($last[$key])) {
+            $prev = $last[$key];
+            if (!($php && skrid_touches_php($php, $list[$prev]['end'], $b['start']))) {
+                $b['prev'] = $prev;
+                $list[$prev]['next'] = $k;
+            }
+        }
+        $last[$key] = $k;
+    }
+    unset($b);
+    foreach ($list as &$b) {
+        unset($b['_node']);
+    }
+    unset($b);
+    return $list;
+}
+
+/** Start of the run of spaces, tabs and line breaks that ends at $at. */
+function skrid_ws_start(string $s, int $at): int
+{
+    while ($at > 0 && str_contains(" \t\n\r\f", $s[$at - 1])) {
+        $at--;
+    }
+    return $at;
+}
+
+/**
+ * Change block K of the page: 'duplicate' (a copy right after it), 'up' / 'down' (swap with the
+ * previous / next sibling block), 'delete'. Only the bytes of the blocks concerned move; the rest of
+ * the file stays identical. Duplicate then delete, and up then down, give back the original bytes.
+ *
+ * @return array{0:string,1:?int} [new page, offset where the block of interest now starts (null after a delete)]
+ * @throws InvalidArgumentException 'bad-block' | 'bad-op' | 'no-sibling'
+ */
+function skrid_block_op(string $s, array $scan, int $k, string $op): array
+{
+    $b = $scan['blocks'][$k] ?? null;
+    if ($b === null) {
+        throw new InvalidArgumentException('bad-block');
+    }
+    $bytes = substr($s, $b['start'], $b['end'] - $b['start']);
+    switch ($op) {
+        case 'duplicate':
+            // Same separator as in front of the original (its line break and indentation, or nothing).
+            $ws = skrid_ws_start($s, $b['start']);
+            $sep = substr($s, $ws, $b['start'] - $ws);
+            $copy = skrid_fresh_ids($bytes, $s);
+            return [substr($s, 0, $b['end']) . $sep . $copy . substr($s, $b['end']), $b['end'] + strlen($sep)];
+
+        case 'delete':
+            // The block and the spacing in front of it: the line goes away cleanly.
+            return [substr($s, 0, skrid_ws_start($s, $b['start'])) . substr($s, $b['end']), null];
+
+        case 'up':
+        case 'down':
+            $j = $op === 'up' ? $b['prev'] : $b['next'];
+            $o = $j === null ? null : $scan['blocks'][$j];
+            if ($o === null) {
+                throw new InvalidArgumentException('no-sibling');
+            }
+            [$first, $second] = $op === 'up' ? [$o, $b] : [$b, $o];
+            $one = substr($s, $first['start'], $first['end'] - $first['start']);
+            $two = substr($s, $second['start'], $second['end'] - $second['start']);
+            $gap = substr($s, $first['end'], $second['start'] - $first['end']);
+            $new = substr($s, 0, $first['start']) . $two . $gap . $one . substr($s, $second['end']);
+            return [$new, $op === 'up' ? $first['start'] : $first['start'] + strlen($two) + strlen($gap)];
+    }
+    throw new InvalidArgumentException('bad-op');
+}
+
+/** Index of the block that starts at $offset, or null. */
+function skrid_block_at(array $scan, ?int $offset): ?int
+{
+    foreach ($scan['blocks'] as $k => $b) {
+        if ($b['start'] === $offset) {
+            return $k;
+        }
+    }
+    return null;
+}
+
+/**
+ * A duplicated block must not repeat the ids of the original (anchors, labels): every id in the copy
+ * becomes id-2 (or -3… if taken), and the references to it inside the copy (for, aria-*, href="#…") follow.
+ */
+function skrid_fresh_ids(string $copy, string $doc): string
+{
+    $val = '("[^"]*"|\'[^\']*\'|[^\s"\'>]+)';
+    if (!preg_match_all('/\sid\s*=\s*' . $val . '/i', $copy, $m)) {
+        return $copy;
+    }
+    $taken = preg_match_all('/\sid\s*=\s*' . $val . '/i', $doc, $all) ? array_map(static fn ($v) => trim($v, '"\''), $all[1]) : [];
+    $taken = array_flip($taken);
+    $map = [];
+    foreach ($m[1] as $v) {
+        $id = trim($v, '"\'');
+        if ($id === '' || isset($map[$id])) {
+            continue;
+        }
+        $i = 2;
+        while (isset($taken[$id . '-' . $i])) {
+            $i++;
+        }
+        $map[$id] = $id . '-' . $i;
+        $taken[$map[$id]] = true;
+    }
+    $attrs = implode('|', array_map(static fn ($a) => preg_quote($a, '/'), array_merge(['id', 'href'], SK_ID_REFS)));
+    return (string) preg_replace_callback('/(\s(' . $attrs . ')\s*=\s*)' . $val . '/i', static function (array $x) use ($map): string {
+        $q = in_array($x[3][0], ['"', "'"], true) ? $x[3][0] : '';
+        $v = $q === '' ? $x[3] : substr($x[3], 1, -1);
+        $name = strtolower($x[2]);
+        if ($name === 'href') {
+            $v = str_starts_with($v, '#') && isset($map[substr($v, 1)]) ? '#' . $map[substr($v, 1)] : $v;
+        } else {
+            $v = (string) preg_replace_callback('/[^\s]+/', static fn ($t) => $map[$t[0]] ?? $t[0], $v);
+        }
+        return $x[1] . $q . $v . $q;
+    }, $copy);
 }
