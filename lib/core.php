@@ -135,13 +135,98 @@ function sk_session(): void
 function sk_logged_in(): bool
 {
     sk_session();
-    return !empty($_SESSION['skrid_user']) && ($_SESSION['skrid_pw'] ?? '') === substr(sha1((string) sk_config()['password_hash']), 0, 12);
+    if (empty($_SESSION['skrid_user']) && sk_remember_check()) {
+        session_regenerate_id(true);
+        $_SESSION['skrid_user'] = 'admin';
+        $_SESSION['skrid_pw'] = sk_pw_tag();
+    }
+    return !empty($_SESSION['skrid_user']) && ($_SESSION['skrid_pw'] ?? '') === sk_pw_tag();
+}
+
+/** Changes with the password: a password change logs out the other sessions and "remember me" tokens. */
+function sk_pw_tag(): string
+{
+    return substr(sha1((string) sk_config()['password_hash']), 0, 12);
+}
+
+// "Remember me": cookie skrid_remember = id.secret (HttpOnly, /skrid/); data/remember.json keeps
+// sha256(secret), the expiry and the password tag. 30 days online, a year on 127.0.0.1.
+
+function sk_remember_days(): int
+{
+    return sk_is_local() ? 365 : 30;
+}
+
+/** @return array<string, array{h: string, e: int, pw: string}> */
+function sk_remember_all(?array $save = null): array
+{
+    sk_data_dir();
+    $f = SKRID_DATA . '/remember.json';
+    if ($save !== null) {
+        $now = time();
+        $save = array_filter($save, static fn ($t) => ($t['e'] ?? 0) > $now && ($t['pw'] ?? '') === sk_pw_tag());
+        @file_put_contents($f, json_encode($save), LOCK_EX);
+        return $save;
+    }
+    return is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: []) : [];
+}
+
+function sk_remember_cookie(string $value, int $expires): void
+{
+    if (headers_sent()) {
+        return;
+    }
+    setcookie('skrid_remember', $value, [
+        'expires' => $expires,
+        'path' => sk_skrid_url(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    ]);
+}
+
+function sk_remember_issue(): void
+{
+    $id = bin2hex(random_bytes(8));
+    $secret = bin2hex(random_bytes(24));
+    $expires = time() + sk_remember_days() * 86400;
+    $all = sk_remember_all();
+    $all[$id] = ['h' => hash('sha256', $secret), 'e' => $expires, 'pw' => sk_pw_tag()];
+    sk_remember_all($all);
+    sk_remember_cookie($id . '.' . $secret, $expires);
+}
+
+/** The cookie's token, if valid. */
+function sk_remember_check(): bool
+{
+    $c = (string) ($_COOKIE['skrid_remember'] ?? '');
+    if (!preg_match('/^([0-9a-f]{16})\.([0-9a-f]{48})$/', $c, $m)) {
+        return false;
+    }
+    $t = sk_remember_all()[$m[1]] ?? null;
+    return $t && $t['e'] > time() && hash_equals($t['h'], hash('sha256', $m[2])) && hash_equals($t['pw'], sk_pw_tag());
+}
+
+/** Forget the cookie's token (logout). */
+function sk_remember_forget(): void
+{
+    $c = (string) ($_COOKIE['skrid_remember'] ?? '');
+    if ($c === '') {
+        return;
+    }
+    $all = sk_remember_all();
+    unset($all[explode('.', $c)[0]]);
+    sk_remember_all($all);
+    sk_remember_cookie('', time() - 3600);
 }
 
 /** Pages: redirect to the login. API: 401. */
 function sk_require_login(bool $json = false): void
 {
     if (sk_logged_in()) {
+        if (!$json && ($_COOKIE['skrid_pen'] ?? '') !== '1') {
+            sk_pen_cookie(true);                       // sessions opened before the pen existed
+        }
         return;
     }
     if ($json) {
@@ -194,7 +279,7 @@ function sk_attempts(?bool $failed = null): int
 }
 
 /** 'ok' | 'wrong' | 'blocked' */
-function sk_login(string $password): string
+function sk_login(string $password, bool $remember = false): string
 {
     if (sk_attempts() >= 8) {
         return 'blocked';
@@ -205,7 +290,11 @@ function sk_login(string $password): string
         sk_session();
         session_regenerate_id(true);
         $_SESSION['skrid_user'] = 'admin';
-        $_SESSION['skrid_pw'] = substr(sha1($hash), 0, 12);   // a password change logs everyone out
+        $_SESSION['skrid_pw'] = sk_pw_tag();   // a password change logs everyone out
+        sk_pen_cookie(true);
+        if ($remember) {
+            sk_remember_issue();
+        }
         return 'ok';
     }
     sk_attempts(true);
@@ -216,8 +305,39 @@ function sk_login(string $password): string
 function sk_logout(): void
 {
     sk_session();
+    sk_remember_forget();
     $_SESSION = [];
     session_destroy();
+    if (!sk_is_local()) {
+        sk_pen_cookie(false);
+    }
+}
+
+/** Running on this computer (php -S 127.0.0.1, localhost). */
+function sk_is_local(): bool
+{
+    $host = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+    return in_array($host, ['127.0.0.1', 'localhost', '[::1]'], true)
+        || in_array((string) ($_SERVER['REMOTE_ADDR'] ?? ''), ['127.0.0.1', '::1'], true) && $host === '';
+}
+
+/**
+ * "skrid_pen" cookie, readable by the site's pages (no secret, just "1"): assets/pen.js shows a pen on
+ * the public pages to open them in Skrid. Online it lasts the browser session and goes on logout;
+ * on 127.0.0.1 it stays a year, so the pen is still there after the login has expired.
+ */
+function sk_pen_cookie(bool $on): void
+{
+    if (headers_sent() || ($on && ($_COOKIE['skrid_pen'] ?? '') === '1' && !sk_is_local())) {
+        return;
+    }
+    setcookie('skrid_pen', $on ? '1' : '', [
+        'expires' => $on ? (sk_is_local() ? time() + 365 * 86400 : 0) : time() - 3600,
+        'path' => sk_site_url(),
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => false,
+    ]);
 }
 
 function sk_password_is_default(): bool

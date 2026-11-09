@@ -33,7 +33,7 @@ if (sk_logged_in()) {
 
 $error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $r = sk_login((string) ($_POST['password'] ?? ''));
+    $r = sk_login((string) ($_POST['password'] ?? ''), !empty($_POST['remember']));
     if ($r === 'ok') {
         header('Location: ' . $next);
         exit;
@@ -61,6 +61,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <input type="hidden" name="next" value="<?= h($next) ?>">
     <label for="pw"><?= h(t('login.password')) ?></label>
     <input id="pw" name="password" type="password" autocomplete="current-password" required autofocus>
+    <label class="check"><input type="checkbox" name="remember" value="1"<?= sk_is_local() || !empty($_POST['remember']) ? ' checked' : '' ?>> <?= h(t('login.remember', (string) sk_remember_days())) ?></label>
     <?php if ($error): ?><p class="msg error" role="alert"><?= h($error) ?></p><?php endif; ?>
     <button class="btn primary" type="submit"><?= h(t('login.submit')) ?></button>
   </form>

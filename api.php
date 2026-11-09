@@ -251,6 +251,9 @@ switch ($action) {
             sk_json(['error' => 'write'], 500);
         }
         $_SESSION['skrid_pw'] = substr(sha1($hash), 0, 12);   // stay logged in, others are logged out
+        if (isset($_COOKIE['skrid_remember'])) {
+            sk_remember_issue();                                 // a new token for this browser (the old ones no longer match)
+        }
         sk_log('password', '');
         sk_json(['ok' => true]);
 

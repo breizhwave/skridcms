@@ -390,7 +390,7 @@ function tree_node(array $node, callable $viewUrl, string $path): string
       <dt><?= h(t('settings.siteUrl')) ?></dt><dd><code><?= h($origin . sk_site_url()) ?></code></dd>
       <dt><?= h(t('settings.writable')) ?></dt><dd><?= $writable ?> / <?= count($pages) ?></dd>
       <dt><?= h(t('settings.data')) ?></dt><dd><?= is_writable(SKRID_DATA) ? h(t('settings.ok')) : '<strong class="bad">' . h(t('settings.ko')) . '</strong>' ?></dd>
-      <dt>PHP</dt><dd><?= h(PHP_VERSION) ?> · Skrid <?= SKRID_VERSION ?></dd>
+      <dt>PHP</dt><dd><?= h(PHP_VERSION) ?> · <a href="https://wave.bzh/en/breizhvibe/skridcms/" target="_blank" rel="noopener">Skrid <?= SKRID_VERSION ?></a></dd>
     </dl>
   </section>
 <?php endif; ?>

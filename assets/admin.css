@@ -146,6 +146,8 @@ body.login { display: grid; place-items: center; min-height: 100vh; padding: 20p
 .login-card form { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .login-card label { font-weight: 600; }
 .login-card .btn { margin-top: 6px; }
+.login-card label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; color: var(--muted, #64748b); }
+.login-card label.check input { width: auto; margin: 0; }
 
 /* Tags and chips (pages tree, data) */
 .tag { flex: none; padding: 1px 6px; border-radius: 6px; background: #f1ecfe; color: #5b3fc4; font: 700 11px/1.5 ui-monospace, Menlo, monospace; letter-spacing: 0.02em; }
